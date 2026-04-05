@@ -16,6 +16,7 @@ A Claude Code Skill that automatically generates Java unit tests. Detects code c
 
 ### Script Install
 
+**Linux / macOS / Git Bash:**
 ```bash
 # Project-local
 bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh)
@@ -24,19 +25,38 @@ bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/i
 bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh) --global
 ```
 
+**Windows CMD / PowerShell:**
+```cmd
+REM Download and run installer
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %TEMP%\test-weaver-installer
+%TEMP%\test-weaver-installer\scripts\install.bat
+REM Or global install
+%TEMP%\test-weaver-installer\scripts\install.bat --global
+```
+
 ### Manual Install
 
 ```bash
 # Project-local
 git clone https://gitee.com/ouyang-wenxuan/test_weaver.git .claude/skills/test-weaver
 
-# Global
+# Global (Linux / macOS)
 git clone https://gitee.com/ouyang-wenxuan/test_weaver.git ~/.claude/skills/test-weaver
+
+# Global (Windows)
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
 ```
 
 ## Upgrade
 
 ```bash
+# Linux / macOS
+cd .claude/skills/test-weaver && bash scripts/install.sh --upgrade
+
+# Windows
+cd .claude\skills\test-weaver && scripts\install.bat --upgrade
+
+# Manual (all platforms)
 cd .claude/skills/test-weaver && git pull
 ```
 

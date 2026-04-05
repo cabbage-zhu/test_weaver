@@ -16,6 +16,7 @@
 
 ### 方式一：脚本安装
 
+**Linux / macOS / Git Bash：**
 ```bash
 # 安装到当前项目
 bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh)
@@ -24,30 +25,49 @@ bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/i
 bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh) --global
 ```
 
+**Windows CMD / PowerShell：**
+```cmd
+REM 先下载脚本，再执行
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %TEMP%\test-weaver-installer
+%TEMP%\test-weaver-installer\scripts\install.bat
+REM 或全局安装
+%TEMP%\test-weaver-installer\scripts\install.bat --global
+```
+
 ### 方式二：手动安装
 
 ```bash
 # 项目级安装
 git clone https://gitee.com/ouyang-wenxuan/test_weaver.git .claude/skills/test-weaver
 
-# 全局安装
+# 全局安装（Linux / macOS）
 git clone https://gitee.com/ouyang-wenxuan/test_weaver.git ~/.claude/skills/test-weaver
+
+# 全局安装（Windows）
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
 ```
 
 ## 升级
 
 ```bash
-# 脚本升级
+# Linux / macOS
 cd .claude/skills/test-weaver && bash scripts/install.sh --upgrade
 
-# 手动升级
+# Windows
+cd .claude\skills\test-weaver && scripts\install.bat --upgrade
+
+# 手动升级（通用）
 cd .claude/skills/test-weaver && git pull
 ```
 
 ## 卸载
 
 ```bash
+# Linux / macOS
 cd .claude/skills/test-weaver && bash scripts/install.sh --uninstall
+
+# Windows
+cd .claude\skills\test-weaver && scripts\install.bat --uninstall
 ```
 
 ## 使用
@@ -85,7 +105,8 @@ test_weaver/
 │   ├── testing-rules.md
 │   └── bug-report-template.md
 └── scripts/
-    └── install.sh           # 安装/升级脚本
+    ├── install.sh           # 安装/升级脚本（Linux / macOS）
+    └── install.bat          # 安装/升级脚本（Windows）
 ```
 
 ## 许可
