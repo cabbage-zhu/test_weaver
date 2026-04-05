@@ -3,12 +3,32 @@ name: test-weaver
 description: "根据 git diff 自动生成 Java 单元测试（TestNG + Mockito），分析覆盖率缺口，检测业务代码 bug。当用户输入 /test-weaver 时触发。"
 argument-hint: "[文件路径或分支名]"
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, Agent]
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Test Weaver — 自动生成 Java 单元测试
 
 你是一个专业的 Java 单元测试生成助手。根据 git diff 检测代码变更，分析覆盖率缺口，生成高质量的 TestNG 单元测试，并能发现业务代码中的潜在 bug。
+
+## 模型优化
+
+**执行前检查并切换模型**：如果当前模型是 Sonnet 或 Opus，自动切换到 Haiku 以优化成本（test-weaver 是相对简单的代码生成任务）。
+
+```bash
+# 检查当前模型
+CURRENT_MODEL=$(grep -o '"model"[[:space:]]*:[[:space:]]*"[^"]*"' ~/.claude/settings.json | grep -o '"[^"]*"$' | tr -d '"')
+
+# 如果是 Sonnet 或 Opus，切换到 Haiku
+if [[ "$CURRENT_MODEL" == *"sonnet"* ]] || [[ "$CURRENT_MODEL" == *"opus"* ]]; then
+    echo "当前模型: $CURRENT_MODEL，切换到 Haiku 以优化成本..."
+    sed -i 's/"model"[[:space:]]*:[[:space:]]*"[^"]*"/"model": "claude-haiku-4-5-20251001"/' ~/.claude/settings.json
+    SWITCHED_MODEL=true
+else
+    SWITCHED_MODEL=false
+fi
+```
+
+执行完所有阶段后，如果切换过模型，则恢复原模型。
 
 ## 硬性约束（不可违反）
 
@@ -22,7 +42,35 @@ version: 1.0.0
 
 ## 工作流
 
-按以下 7 个阶段顺序执行。每个阶段完成后简要输出进度。
+按以下 8 个阶段顺序执行。每个阶段完成后简要输出进度。
+
+---
+
+### 阶段 0：模型切换（可选优化）
+
+**检查并切换模型以优化成本**：
+
+```bash
+# 读取当前模型配置
+SETTINGS_FILE="$HOME/.claude/settings.json"
+CURRENT_MODEL=$(grep -o '"model"[[:space:]]*:[[:space:]]*"[^"]*"' "$SETTINGS_FILE" 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"' || echo "unknown")
+
+# 如果是 Sonnet 或 Opus，记录原模型并切换到 Haiku
+SWITCHED_MODEL=false
+ORIGINAL_MODEL="$CURRENT_MODEL"
+
+if [[ "$CURRENT_MODEL" == *"sonnet"* ]] || [[ "$CURRENT_MODEL" == *"opus"* ]]; then
+    echo "当前模型: $CURRENT_MODEL，切换到 Haiku 以优化成本..."
+    # 使用 sed 更新 settings.json
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' 's/"model"[[:space:]]*:[[:space:]]*"[^"]*"/"model": "claude-haiku-4-5-20251001"/' "$SETTINGS_FILE"
+    else
+        sed -i 's/"model"[[:space:]]*:[[:space:]]*"[^"]*"/"model": "claude-haiku-4-5-20251001"/' "$SETTINGS_FILE"
+    fi
+    SWITCHED_MODEL=true
+    echo "已切换到 Haiku"
+fi
+```
 
 ---
 
@@ -272,6 +320,23 @@ mvn test -pl <module> -Dtest=<TestClassName> -Dsurefire.useFile=false 2>&1 | tai
 
 ### 跳过项
 <列出跳过的方法及原因，或 "无">
+```
+
+---
+
+### 阶段 8：恢复模型（如果已切换）
+
+如果在阶段 0 切换过模型，现在恢复原模型：
+
+```bash
+if [ "$SWITCHED_MODEL" = true ]; then
+    echo "恢复原模型: $ORIGINAL_MODEL"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/\"model\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"model\": \"$ORIGINAL_MODEL\"/" "$SETTINGS_FILE"
+    else
+        sed -i "s/\"model\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"model\": \"$ORIGINAL_MODEL\"/" "$SETTINGS_FILE"
+    fi
+fi
 ```
 
 ## 注意事项
