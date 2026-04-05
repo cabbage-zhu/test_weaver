@@ -175,6 +175,8 @@ mvn test jacoco:report -pl <module> -q 2>&1 | tail -20
 1. **测试文件位置**：`src/test/java/ut/{被测类包路径}/{被测类名}Test.java`
 2. **已有测试文件**：用 Edit 工具追加新测试方法，不破坏已有测试
 3. **新建测试文件**：用 Write 工具创建，包含完整的 import、类声明、@BeforeMethod/@AfterMethod
+   - **类注释规范**：新增测试类只写测试类描述，不写其他信息。示例：`// FooServiceTest 单元测试`
+   - **方法注释规范**：中英文混写时无空格，示例：`// 测试calculateDiscount方法当数量超过100时` 而非 `// 测试 calculateDiscount 方法当数量超过 100 时`
 4. **Mock 初始化**：
    - 有 setter 或构造器注入的依赖：用 `@Mock` + `@InjectMocks`
    - 私有字段无 setter：用反射 `injectField()` 注入
