@@ -28,7 +28,7 @@ bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/i
 **Windows CMD / PowerShell:**
 ```cmd
 REM Download and run installer
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %TEMP%\test-weaver-installer
+git clone https://github.com/cabbage-zhu/test_weaver.git %TEMP%\test-weaver-installer
 %TEMP%\test-weaver-installer\scripts\install.bat
 REM Or global install
 %TEMP%\test-weaver-installer\scripts\install.bat --global
@@ -38,13 +38,13 @@ REM Or global install
 
 ```bash
 # Project-local
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git .claude/skills/test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git .claude/skills/test-weaver
 
 # Global (Linux / macOS)
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git ~/.claude/skills/test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git ~/.claude/skills/test-weaver
 
 # Global (Windows)
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
 ```
 
 ## Upgrade
@@ -68,6 +68,36 @@ In Claude Code:
 /test-weaver                              # Analyze all git diff master changes
 /test-weaver src/main/java/com/example/FooService.java   # Analyze specific file
 /test-weaver feature/login                # Diff against specific branch
+```
+
+## Model Switching (Cost Optimization)
+
+test-weaver is a relatively simple code generation task. It's recommended to use Haiku model to reduce costs.
+
+### Manual Model Switching
+
+In Claude Code, type:
+
+```
+/model haiku
+```
+
+After test-weaver completes, switch back to your original model:
+
+```
+/model opus
+```
+
+Or use the following to complete the task with a single command:
+
+**Linux / macOS / Git Bash:**
+```bash
+/model haiku && /test-weaver
+```
+
+**Windows PowerShell:**
+```powershell
+/model haiku; /test-weaver
 ```
 
 ## Constraints
