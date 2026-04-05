@@ -28,7 +28,7 @@ bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/i
 **Windows CMD / PowerShell：**
 ```cmd
 REM 先下载脚本，再执行
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %TEMP%\test-weaver-installer
+git clone https://github.com/cabbage-zhu/test_weaver.git %TEMP%\test-weaver-installer
 %TEMP%\test-weaver-installer\scripts\install.bat
 REM 或全局安装
 %TEMP%\test-weaver-installer\scripts\install.bat --global
@@ -38,13 +38,13 @@ REM 或全局安装
 
 ```bash
 # 项目级安装
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git .claude/skills/test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git .claude/skills/test-weaver
 
 # 全局安装（Linux / macOS）
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git ~/.claude/skills/test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git ~/.claude/skills/test-weaver
 
 # 全局安装（Windows）
-git clone https://gitee.com/ouyang-wenxuan/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
+git clone https://github.com/cabbage-zhu/test_weaver.git %USERPROFILE%\.claude\skills\test-weaver
 ```
 
 ## 升级
@@ -78,6 +78,36 @@ cd .claude\skills\test-weaver && scripts\install.bat --uninstall
 /test-weaver                              # 分析所有 git diff master 的变更
 /test-weaver src/main/java/com/example/FooService.java   # 只分析指定文件
 /test-weaver feature/login                # 对比指定分支
+```
+
+## 模型切换（成本优化）
+
+test-weaver 是相对简单的代码生成任务，建议在运行时使用 Haiku 模型以降低成本。
+
+### 手动切换模型
+
+在 Claude Code 中输入：
+
+```
+/model haiku
+```
+
+运行 test-weaver 完成后，可切换回原模型：
+
+```
+/model opus
+```
+
+或者在运行前使用以下命令一次性完成生成任务：
+
+**Linux / macOS / Git Bash：**
+```bash
+/model haiku && /test-weaver
+```
+
+**Windows PowerShell：**
+```powershell
+/model haiku; /test-weaver
 ```
 
 ## 约束
