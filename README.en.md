@@ -1,36 +1,66 @@
-# test_weaver
+# Test Weaver
 
-#### Description
-测试编织者
+A Claude Code Skill that automatically generates Java unit tests. Detects code changes via git diff, analyzes coverage gaps, generates TestNG + Mockito unit tests, and identifies potential business logic bugs.
 
-#### Software Architecture
-Software architecture description
+## Features
 
-#### Installation
+- Auto-detect changes via `git diff master`
+- JaCoCo coverage analysis with static code analysis fallback
+- Generate tests covering code paths and branches
+- TestNG + Mockito only, no PowerMock
+- Reflection-based injection for static method dependencies
+- Auto-detect whether test failures are test issues or business bugs
+- Report suspected bugs without modifying business code
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## Installation
 
-#### Instructions
+### Script Install
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+```bash
+# Project-local
+bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh)
 
-#### Contribution
+# Global
+bash <(curl -s https://gitee.com/ouyang-wenxuan/test_weaver/raw/master/scripts/install.sh) --global
+```
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+### Manual Install
 
+```bash
+# Project-local
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git .claude/skills/test-weaver
 
-#### Gitee Feature
+# Global
+git clone https://gitee.com/ouyang-wenxuan/test_weaver.git ~/.claude/skills/test-weaver
+```
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+## Upgrade
+
+```bash
+cd .claude/skills/test-weaver && git pull
+```
+
+## Usage
+
+In Claude Code:
+
+```
+/test-weaver                              # Analyze all git diff master changes
+/test-weaver src/main/java/com/example/FooService.java   # Analyze specific file
+/test-weaver feature/login                # Diff against specific branch
+```
+
+## Constraints
+
+| Constraint | Detail |
+|------------|--------|
+| Test framework | TestNG (not JUnit) |
+| Mock framework | Mockito (not PowerMock) |
+| Static methods | Reflection injection; skip if untestable |
+| Test directory | `src/test/java/ut/` |
+| Naming | camelCase `test{Method}{Scenario}` |
+| Business code | Read-only; report bugs, never modify |
+
+## License
+
+MIT
