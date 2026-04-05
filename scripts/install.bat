@@ -10,7 +10,7 @@ REM   install.bat --global     安装到 %USERPROFILE%\.claude\skills\test-weave
 REM   install.bat --upgrade    升级已有安装
 REM   install.bat --uninstall  卸载
 
-set "REPO_URL=https://gitee.com/ouyang-wenxuan/test_weaver.git"
+set "REPO_URL=https://github.com/cabbage-zhu/test_weaver.git"
 set "SKILL_NAME=test-weaver"
 
 if "%~1"=="--help" goto :usage

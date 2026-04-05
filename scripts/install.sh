@@ -10,7 +10,7 @@
 
 set -e
 
-REPO_URL="https://gitee.com/ouyang-wenxuan/test_weaver.git"
+REPO_URL="https://github.com/cabbage-zhu/test_weaver.git"
 SKILL_NAME="test-weaver"
 
 print_usage() {
