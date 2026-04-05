@@ -131,14 +131,47 @@ mvn test jacoco:report -pl <module> -q 2>&1 | tail -20
    - 有 setter 或构造器注入的依赖：用 `@Mock` + `@InjectMocks`
    - 私有字段无 setter：用反射 `injectField()` 注入
    - 静态字段：用 `injectStaticField()` 注入
-5. **分支覆盖**：
-   - 每个 if/else 分支至少一个测试
-   - switch 的每个 case + default 各一个测试
-   - try 正常路径 + catch 异常路径各一个测试
-   - null 和非 null 各一个测试
-   - 使用 `@DataProvider` 做参数化测试（当输入组合 >= 3 种时）
-6. **注释**：每个测试方法上方注释说明覆盖的分支路径
-7. **断言**：使用 TestNG 的 `assertEquals`、`assertTrue`、`assertNull`、`assertNotNull`、`expectedExceptions` 等
+5. **Mock 行为复用** — 将重复的 `when(...).thenReturn(...)` 抽成 private 方法：
+   ```java
+   private void mockPaymentSuccess() {
+       when(paymentGateway.charge(anyDouble())).thenReturn(true);
+   }
+   ```
+   同理，verify 逻辑重复时也抽成方法：
+   ```java
+   private void verifyOnlyEmailCalled(String address, String message) {
+       verify(emailClient).send(address, message);
+       verify(smsClient, never()).send(anyString(), anyString());
+   }
+   ```
+6. **参数化测试优先** — 同一方法的多种输入/分支场景，优先用 `@DataProvider` + `@Test(dataProvider = "xxx")` 参数化覆盖，避免写多个重复的测试方法：
+   ```java
+   @DataProvider(name = "discountByAmount")
+   public Object[][] discountByAmount() {
+       return new Object[][]{
+           {1500.0, "NORMAL", 1350.0, "大额折扣"},
+           {500.0,  "NORMAL", 475.0,  "普通折扣"},
+           {1000.0, "NORMAL", 950.0,  "边界值"},
+       };
+   }
+
+   @Test(dataProvider = "discountByAmount")
+   public void testCalculateDiscount(double amount, String type, double expected, String desc) {
+       assertEquals(service.calculateDiscount(amount, type), expected, 0.01, desc);
+   }
+   ```
+7. **充分使用 TestNG 注解和特性**：
+   - `@Test(description = "...")` — 每个测试方法必须写 description 说明意图
+   - `@Test(dataProvider = "...")` — 参数化测试
+   - `@Test(expectedExceptions = XxxException.class)` — 异常验证，不要用 try/catch + fail
+   - `@Test(expectedExceptionsMessageRegExp = "...")` — 异常消息正则匹配
+   - `@Test(groups = "...")` — 按分支类型分组（如 "if-else"、"switch-case"、"exception"）
+   - `@Test(timeOut = 3000)` — 性能敏感方法加超时保护
+   - `@Test(dependsOnMethods = "...")` — 有前置依赖的测试声明依赖关系
+   - `SoftAssert` — 需要验证多个属性时用 SoftAssert 批量断言，一次收集所有失败
+   - `ArgumentCaptor` — 需要验证传参细节时用 Mockito 的 ArgumentCaptor 捕获参数
+   - `InOrder` — 需要验证调用顺序时用 `inOrder(mock1, mock2)`
+8. **断言**：使用 TestNG 的 `assertEquals`、`assertTrue`、`assertNull`、`assertNotNull`、`assertFalse`、`assertThrows` 等，带上 message 参数说明断言意图
 
 **反射注入工具方法模板（写入测试类）：**
 ```java

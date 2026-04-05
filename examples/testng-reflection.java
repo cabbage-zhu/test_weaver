@@ -4,6 +4,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.lang.reflect.Field;
@@ -14,13 +15,11 @@ import static org.testng.Assert.*;
 /**
  * 反射注入示例 — 替代 PowerMock
  *
- * 场景：被测类持有一个私有字段（可能是 static 或通过构造器/setter 无法注入的依赖），
- * 通过 java.lang.reflect.Field 直接设置 mock 对象。
- *
- * 适用于：
- * 1. 私有字段没有 setter 且不通过构造器注入
- * 2. 静态字段持有的工具类/客户端实例
- * 3. @InjectMocks 无法覆盖的场景
+ * 要点：
+ * - injectField / injectStaticField 抽成可复用工具方法
+ * - @DataProvider 参数化覆盖不同渠道的发送逻辑
+ * - mock 行为抽成方法，减少重复 when/verify
+ * - 适用于私有字段无 setter、静态字段、@InjectMocks 无法覆盖的场景
  */
 public class NotificationServiceTest {
 
@@ -37,11 +36,7 @@ public class NotificationServiceTest {
     public void setUp() throws Exception {
         mocks = MockitoAnnotations.openMocks(this);
         notificationService = new NotificationService();
-
-        // 通过反射注入私有字段 emailClient
         injectField(notificationService, "emailClient", emailClient);
-
-        // 通过反射注入私有字段 smsClient
         injectField(notificationService, "smsClient", smsClient);
     }
 
@@ -50,9 +45,10 @@ public class NotificationServiceTest {
         mocks.close();
     }
 
+    // ========== 反射注入工具方法（可复用） ==========
+
     /**
-     * 通用反射注入工具方法
-     * 支持注入私有字段、静态字段
+     * 通用反射注入 — 支持私有字段，向上查找父类
      */
     private void injectField(Object target, String fieldName, Object value) throws Exception {
         Field field = findField(target.getClass(), fieldName);
@@ -61,8 +57,14 @@ public class NotificationServiceTest {
     }
 
     /**
-     * 向上查找字段（支持父类中的字段）
+     * 静态字段注入 — 替代 PowerMock.mockStatic()
      */
+    private void injectStaticField(Class<?> clazz, String fieldName, Object value) throws Exception {
+        Field field = clazz.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(null, value);
+    }
+
     private Field findField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
         Class<?> current = clazz;
         while (current != null) {
@@ -75,44 +77,88 @@ public class NotificationServiceTest {
         throw new NoSuchFieldException(fieldName + " not found in " + clazz.getName() + " or its parents");
     }
 
-    /**
-     * 注入静态字段的变体
-     * 用于替代 PowerMock.mockStatic() 的场景
-     */
-    private void injectStaticField(Class<?> clazz, String fieldName, Object value) throws Exception {
-        Field field = clazz.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(null, value); // null target = static field
+    // ========== 可复用的 mock 行为 ==========
+
+    private void mockEmailSend(boolean result) {
+        when(emailClient.send(anyString(), anyString())).thenReturn(result);
     }
 
-    @Test
-    public void testSendNotificationViaEmail() {
-        when(emailClient.send(anyString(), anyString())).thenReturn(true);
+    private void mockSmsSend(boolean result) {
+        when(smsClient.send(anyString(), anyString())).thenReturn(result);
+    }
+
+    private void verifyOnlyEmailCalled(String address, String message) {
+        verify(emailClient).send(address, message);
+        verify(smsClient, never()).send(anyString(), anyString());
+    }
+
+    private void verifyOnlySmsCalled(String phone, String message) {
+        verify(smsClient).send(phone, message);
+        verify(emailClient, never()).send(anyString(), anyString());
+    }
+
+    private void verifyNeitherCalled() {
+        verify(emailClient, never()).send(anyString(), anyString());
+        verify(smsClient, never()).send(anyString(), anyString());
+    }
+
+    // ========== DataProvider 参数化覆盖渠道分支 ==========
+
+    @DataProvider(name = "sendSuccessScenarios")
+    public Object[][] sendSuccessScenarios() {
+        return new Object[][]{
+                // address,             message,  channel, description
+                {"user@example.com",    "Hello",  "EMAIL", "邮件渠道发送成功"},
+                {"13800138000",         "Hello",  "SMS",   "短信渠道发送成功"},
+        };
+    }
+
+    @Test(dataProvider = "sendSuccessScenarios",
+          description = "参数化验证不同渠道的发送成功场景")
+    public void testSendNotificationSuccess(String address, String message,
+                                            String channel, String desc) {
+        if ("EMAIL".equals(channel)) {
+            mockEmailSend(true);
+        } else {
+            mockSmsSend(true);
+        }
+
+        boolean result = notificationService.sendNotification(address, message, channel);
+
+        assertTrue(result, desc);
+        if ("EMAIL".equals(channel)) {
+            verifyOnlyEmailCalled(address, message);
+        } else {
+            verifyOnlySmsCalled(address, message);
+        }
+    }
+
+    // ========== 未知渠道 ==========
+
+    @DataProvider(name = "unknownChannels")
+    public Object[][] unknownChannels() {
+        return new Object[][]{
+                {"FAX"}, {"PUSH"}, {""}, {null},
+        };
+    }
+
+    @Test(dataProvider = "unknownChannels",
+          description = "未知或空渠道应返回 false 且不调用任何客户端")
+    public void testSendNotificationUnknownChannel(String channel) {
+        boolean result = notificationService.sendNotification("addr", "Hello", channel);
+
+        assertFalse(result);
+        verifyNeitherCalled();
+    }
+
+    // ========== 发送失败场景 ==========
+
+    @Test(description = "邮件发送失败应返回 false")
+    public void testSendNotificationEmailFailed() {
+        mockEmailSend(false);
 
         boolean result = notificationService.sendNotification("user@example.com", "Hello", "EMAIL");
 
-        assertTrue(result);
-        verify(emailClient).send("user@example.com", "Hello");
-        verify(smsClient, never()).send(anyString(), anyString());
-    }
-
-    @Test
-    public void testSendNotificationViaSms() {
-        when(smsClient.send(anyString(), anyString())).thenReturn(true);
-
-        boolean result = notificationService.sendNotification("13800138000", "Hello", "SMS");
-
-        assertTrue(result);
-        verify(smsClient).send("13800138000", "Hello");
-        verify(emailClient, never()).send(anyString(), anyString());
-    }
-
-    @Test
-    public void testSendNotificationUnknownChannel() {
-        boolean result = notificationService.sendNotification("addr", "Hello", "FAX");
-
         assertFalse(result);
-        verify(emailClient, never()).send(anyString(), anyString());
-        verify(smsClient, never()).send(anyString(), anyString());
     }
 }

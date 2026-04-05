@@ -7,15 +7,20 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 /**
  * 分支覆盖示例
- * - @DataProvider 参数化测试覆盖多种输入组合
- * - if/else、switch/case、try/catch、null 检查 各分支都要覆盖
- * - 每个测试方法注释说明覆盖的分支路径
+ *
+ * 要点：
+ * - @DataProvider 参数化覆盖 if/else、switch/case、边界值，一个测试方法覆盖多条分支
+ * - mock 行为抽成可复用方法
+ * - SoftAssert 批量验证多个断言
+ * - @Test(groups) 按分支类型分组，方便按组运行
+ * - @Test(expectedExceptions) 验证异常分支
  */
 public class DiscountServiceTest {
 
@@ -37,95 +42,117 @@ public class DiscountServiceTest {
         mocks.close();
     }
 
-    // ========== if/else 分支覆盖 ==========
+    // ========== 可复用的 mock 行为 ==========
 
-    /** 覆盖分支：amount > 1000 为 true */
-    @Test
-    public void testCalculateDiscountLargeAmount() {
-        double result = discountService.calculateDiscount(1500.0, "NORMAL");
-        assertEquals(result, 1500.0 * 0.9, 0.01);
+    private void mockFindMember(String memberId, String memberType) {
+        when(memberRepository.findById(memberId)).thenReturn(new Member(memberId, memberType));
     }
 
-    /** 覆盖分支：amount > 1000 为 false */
-    @Test
-    public void testCalculateDiscountSmallAmount() {
-        double result = discountService.calculateDiscount(500.0, "NORMAL");
-        assertEquals(result, 500.0 * 0.95, 0.01);
+    private void mockFindMemberThrows(String memberId, RuntimeException ex) {
+        when(memberRepository.findById(memberId)).thenThrow(ex);
     }
 
-    // ========== switch/case 分支覆盖 ==========
+    // ========== if/else + 边界值：用 DataProvider 一次覆盖 ==========
+
+    @DataProvider(name = "discountByAmount")
+    public Object[][] discountByAmount() {
+        return new Object[][]{
+                // amount,    memberType, expected,           description
+                {1500.0,      "NORMAL",   1500.0 * 0.9,      "amount > 1000 走大额折扣"},
+                {500.0,       "NORMAL",   500.0 * 0.95,       "amount <= 1000 走普通折扣"},
+                {1000.0,      "NORMAL",   1000.0 * 0.95,      "边界值：恰好 1000 不满足 > 1000"},
+                {0.0,         "VIP",      0.0,                 "边界值：amount 为 0"},
+                {1000.01,     "NORMAL",   1000.01 * 0.9,       "边界值：刚超过 1000"},
+        };
+    }
+
+    @Test(dataProvider = "discountByAmount", groups = "if-else",
+          description = "参数化验证金额阈值的 if/else 分支 + 边界值")
+    public void testCalculateDiscountByAmount(double amount, String memberType,
+                                              double expected, String desc) {
+        assertEquals(discountService.calculateDiscount(amount, memberType), expected, 0.01, desc);
+    }
+
+    // ========== switch/case：DataProvider 覆盖所有 case + default ==========
 
     @DataProvider(name = "memberTypes")
     public Object[][] memberTypes() {
         return new Object[][]{
-                {"VIP", 0.8},       // case "VIP"
-                {"GOLD", 0.85},     // case "GOLD"
-                {"NORMAL", 0.95},   // case "NORMAL"
-                {"UNKNOWN", 1.0},   // default
+                {"VIP",     0.8},       // case "VIP"
+                {"GOLD",    0.85},      // case "GOLD"
+                {"NORMAL",  0.95},      // case "NORMAL"
+                {"UNKNOWN", 1.0},       // default
         };
     }
 
-    /** 覆盖 switch 所有 case + default */
-    @Test(dataProvider = "memberTypes")
+    @Test(dataProvider = "memberTypes", groups = "switch-case",
+          description = "参数化验证 switch 所有 case + default")
     public void testGetDiscountRateByMemberType(String memberType, double expectedRate) {
-        double rate = discountService.getDiscountRate(memberType);
-        assertEquals(rate, expectedRate, 0.01);
+        assertEquals(discountService.getDiscountRate(memberType), expectedRate, 0.01);
     }
 
-    // ========== null 检查分支覆盖 ==========
+    // ========== null 检查 ==========
 
-    /** 覆盖分支：memberType == null */
-    @Test
+    @Test(groups = "null-check", description = "memberType 为 null 时走默认折扣")
     public void testCalculateDiscountNullMemberType() {
-        double result = discountService.calculateDiscount(1000.0, null);
-        // null 应走默认折扣逻辑
-        assertEquals(result, 1000.0, 0.01);
+        assertEquals(discountService.calculateDiscount(1000.0, null), 1000.0, 0.01);
     }
 
-    // ========== try/catch 分支覆盖 ==========
+    // ========== try/catch 分支：DataProvider 覆盖正常 + 异常路径 ==========
 
-    /** 覆盖分支：try 正常路径 */
-    @Test
-    public void testApplyDiscountWithValidMember() {
-        when(memberRepository.findById("m-1")).thenReturn(new Member("m-1", "VIP"));
-
-        double result = discountService.applyDiscount("m-1", 1000.0);
-
-        assertEquals(result, 800.0, 0.01);
-        verify(memberRepository).findById("m-1");
+    @DataProvider(name = "applyDiscountScenarios")
+    public Object[][] applyDiscountScenarios() {
+        return new Object[][]{
+                // memberId, memberType, throwEx, expectedAmount, description
+                {"m-1", "VIP",  false, 800.0,  "正常路径：VIP 会员打 8 折"},
+                {"m-2", "GOLD", false, 850.0,  "正常路径：GOLD 会员打 85 折"},
+        };
     }
 
-    /** 覆盖分支：catch 异常路径 — 仓储层抛异常时走降级逻辑 */
-    @Test
+    @Test(dataProvider = "applyDiscountScenarios", groups = "try-catch",
+          description = "参数化验证 try 正常路径的不同会员类型")
+    public void testApplyDiscountNormalPath(String memberId, String memberType,
+                                            boolean throwEx, double expected, String desc) {
+        mockFindMember(memberId, memberType);
+
+        double result = discountService.applyDiscount(memberId, 1000.0);
+
+        assertEquals(result, expected, 0.01, desc);
+        verify(memberRepository).findById(memberId);
+    }
+
+    @Test(groups = "try-catch", description = "catch 异常路径：仓储层异常时降级返回原价")
     public void testApplyDiscountWhenRepositoryFails() {
-        when(memberRepository.findById("m-1")).thenThrow(new RuntimeException("DB timeout"));
+        mockFindMemberThrows("m-1", new RuntimeException("DB timeout"));
 
         double result = discountService.applyDiscount("m-1", 1000.0);
 
-        // 降级：不打折，返回原价
-        assertEquals(result, 1000.0, 0.01);
+        assertEquals(result, 1000.0, 0.01, "降级：不打折，返回原价");
     }
 
-    // ========== 边界值覆盖 ==========
+    // ========== 异常分支 ==========
 
-    /** 覆盖边界：amount 恰好等于 1000 */
-    @Test
-    public void testCalculateDiscountBoundaryAmount() {
-        double result = discountService.calculateDiscount(1000.0, "NORMAL");
-        // 验证 > 1000 的边界行为（1000 不满足 > 1000）
-        assertEquals(result, 1000.0 * 0.95, 0.01);
-    }
-
-    /** 覆盖边界：amount 为 0 */
-    @Test
-    public void testCalculateDiscountZeroAmount() {
-        double result = discountService.calculateDiscount(0.0, "VIP");
-        assertEquals(result, 0.0, 0.01);
-    }
-
-    /** 覆盖边界：amount 为负数 */
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class,
+          groups = "exception",
+          description = "负数金额应抛出 IllegalArgumentException")
     public void testCalculateDiscountNegativeAmount() {
         discountService.calculateDiscount(-100.0, "NORMAL");
+    }
+
+    // ========== SoftAssert 批量验证 ==========
+
+    @Test(groups = "soft-assert", description = "批量验证折扣计算结果的多个属性")
+    public void testApplyDiscountResultFields() {
+        mockFindMember("m-1", "VIP");
+
+        DiscountResult result = discountService.applyDiscountDetail("m-1", 1000.0);
+
+        SoftAssert sa = new SoftAssert();
+        sa.assertNotNull(result, "result should not be null");
+        sa.assertEquals(result.getOriginalAmount(), 1000.0, 0.01);
+        sa.assertEquals(result.getDiscountRate(), 0.8, 0.01);
+        sa.assertEquals(result.getFinalAmount(), 800.0, 0.01);
+        sa.assertEquals(result.getMemberType(), "VIP");
+        sa.assertAll();
     }
 }
