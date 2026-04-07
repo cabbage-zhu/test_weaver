@@ -30,19 +30,17 @@ public class NotificationServiceTest {
     private SmsClient smsClient;
 
     private NotificationService notificationService;
-    private AutoCloseable mocks;
 
     @BeforeMethod
     public void setUp() throws Exception {
-        mocks = MockitoAnnotations.openMocks(this);
+        MockitoAnnotations.initMocks(this);
         notificationService = new NotificationService();
         injectField(notificationService, "emailClient", emailClient);
         injectField(notificationService, "smsClient", smsClient);
     }
 
     @AfterMethod
-    public void tearDown() throws Exception {
-        mocks.close();
+    public void tearDown() {
     }
 
     // ========== 反射注入工具方法（可复用） ==========

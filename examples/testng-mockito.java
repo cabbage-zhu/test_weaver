@@ -32,16 +32,13 @@ public class OrderServiceTest {
     @InjectMocks
     private OrderService orderService;
 
-    private AutoCloseable mocks;
-
     @BeforeMethod
     public void setUp() {
-        mocks = MockitoAnnotations.openMocks(this);
+        MockitoAnnotations.initMocks(this);
     }
 
     @AfterMethod
-    public void tearDown() throws Exception {
-        mocks.close();
+    public void tearDown() {
     }
 
     // ========== 可复用的 mock 行为 ==========
